@@ -44,6 +44,11 @@ export class SessionService {
         const sessionId = this.hostToSession.get(hostWsId);
         return this.sessions.get(sessionId);
     }
+    getSessionFromParticipantWsId(participantWsId: string){
+        const sessionId = this.participantToSession.get(participantWsId);
+        return this.sessions.get(sessionId);
+    }
+
     removeParticipant(clientId : string){
         return this.participantToSession.delete(clientId);
     }
