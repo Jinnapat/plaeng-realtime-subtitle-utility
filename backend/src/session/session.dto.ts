@@ -27,6 +27,13 @@ export interface HostSpeechDto{
     isBreak: boolean
 }
 
+export interface SpeechDto{
+    speech: string,
+    language: string,
+    seq: number,
+    isBreak: boolean
+}
+
 export interface createSessionFixedIdDto{
     subtitleLang : string,
     sessionId : string
