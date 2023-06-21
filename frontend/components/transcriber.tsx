@@ -236,24 +236,21 @@ export function Transcriber() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-      <Stack alignItems={"center"} spacing={5}>
+      <Stack alignItems="center" spacing={5}>
         <Heading size="xl" color={colorTheme.primary}>
           Session #{sessionId}
         </Heading>
-        <Box h={"30vh"} w={"70vw"} overflowX={"hidden"} overflowY={"scroll"}>
-          <Heading size={"lg"} color={"#92989c"} textAlign="center">
-            {/* {subtitleHistory.map((s,id)=>{
-                        return (<div key={id}>{s}</div>);
-                    })
-                    }  */}
+        <Box h="30vh" w="70vw" overflowX="hidden" overflowY="scroll">
+          <Heading size="lg" color="#92989c" textAlign="center">
             <div>{subtitleHistory[subtitleHistory.length]}</div>
           </Heading>
-          <Heading size={"lg"} color={colorTheme.primary} textAlign="center">
+          <Heading size="lg" color={colorTheme.primary} textAlign="center">
             {currentSubtitle}
           </Heading>
           <div ref={transcriptContainer}></div>
         </Box>
-        <Box w={"30vw"}>
+        <Box w="30vw">
+          <Text>You are the host.</Text>
           <Text>Speech language</Text>
           <Select
             onChange={(e) => {
@@ -291,7 +288,7 @@ export function Transcriber() {
         {
           <Button
             bgColor={colorTheme.primary}
-            color={"white"}
+            color="white"
             onClick={toggleListening}
           >
             {listening ? "Stop listening" : "Start listening"}
