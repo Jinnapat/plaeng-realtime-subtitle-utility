@@ -5,7 +5,7 @@ import { OnGatewayDisconnect } from '@nestjs/websockets/interfaces';
 import axios from 'axios';
 import * as translate from 'translate-google';
 import { Server, Socket } from 'socket.io';
-import { ChangeLanguageDto, createSessionFixedIdDto, HostSpeechDto, JoinSessionDto } from './session.dto';
+import { ChangeLanguageDto, createSessionFixedIdDto, HostSpeechDto, JoinSessionDto, SpeechDto } from './session.dto';
 import { SessionService } from './session.service';
 
 @WebSocketGateway({
@@ -76,6 +76,68 @@ export class SessionGateway implements OnGatewayDisconnect{
       socketId: client.id,
       language: dto.language
     })
+  }
+
+  @SubscribeMessage('speech')
+  async speech(
+    @MessageBody() dto : SpeechDto,
+    @ConnectedSocket() client: Socket
+  ){
+    console.log(dto)
+      const session = this.sessionService.getSessionFromParticipantWsId(client.id);
+      const hostId = session.hostSocketId;
+      if(dto.language == session.hostSubtitleLanguage  || dto.speech.trim() == "" || dto.isBreak){
+        if(dto.isBreak){
+          this.server.to(hostId).emit("subtitle",{
+            seq : dto.seq,
+            speech : '',
+            isBreak : dto.isBreak
+          });
+        }else{
+          this.server.to(hostId).emit("subtitle",{
+            seq : dto.seq,
+            speech : dto.speech,
+            isBreak : dto.isBreak
+          });
+        }
+      }else if(dto.speech !== null && dto.speech.trim() !== ''){
+        try{
+          const translatResult = await translate(dto.speech.toString(), {from : dto.language, to : session.hostSubtitleLanguage});
+          this.server.to(hostId).emit("subtitle",{
+            seq : dto.seq,
+            speech : translatResult,
+            isBreak : dto.isBreak
+          });
+        }catch(err){
+          Logger.error(err, "Translator error");
+        }
+      }
+      // this.server.to(host.id)
+      session.subRoom.forEach(async sr=>{
+        if(dto.language == sr.language || dto.speech.trim() == "" || dto.isBreak){
+          sr.participantsWSId.forEach(wsId=>{
+            this.server.to(wsId).emit("subtitle",{
+              seq : dto.seq,
+              speech : dto.speech,
+              isBreak : dto.isBreak
+            });
+          })
+        }
+        else if(dto.speech !== null && dto.speech.trim() !== ''){
+          try{
+            const translatResult = await translate(dto.speech.toString(), {from : dto.language, to : sr.language});
+            sr.participantsWSId.forEach(wsId=>{
+              this.server.to(wsId).emit("subtitle",{
+                seq : dto.seq,
+                speech : translatResult,
+                isBreak : dto.isBreak
+              });
+            })
+          }catch(err){
+            Logger.error(err, "Translator error");
+          }
+          }
+      })
   }
 
   @SubscribeMessage('hostChangeLanguage')
