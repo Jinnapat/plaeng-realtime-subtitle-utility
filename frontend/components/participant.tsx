@@ -237,7 +237,7 @@ export function Participant() {
           Session #{sessionId}
         </Heading>
         <Box
-          h="50vh"
+          h="45vh"
           w="80vw"
           overflowX="hidden"
           overflowY="scroll"
