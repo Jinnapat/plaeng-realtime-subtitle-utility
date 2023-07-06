@@ -85,7 +85,7 @@ export function Participant() {
   currentSubtitleRef.current = currentSubtitle;
 
   async function fillGap() {
-    let counter = expectedSeqRef.current;
+    let counter = sequenceRef.current;
     counter = counter + 1;
     if (bufferRef.current.size > 0) {
       while (bufferRef.current.has(counter)) {
@@ -100,7 +100,7 @@ export function Participant() {
         counter = counter + 1;
       }
     }
-    expectedSeqRef.current = counter;
+    sequenceRef.current = counter;
   }
 
   useEffect(() => {
@@ -125,8 +125,8 @@ export function Participant() {
       });
       socket.on("subtitle", (e) => {
         transcriptContainer.current?.scrollIntoView({ behavior: "smooth" });
-        if (expectedSeqRef.current == -1) {
-          expectedSeqRef.current = e.seq + 1;
+        if (sequenceRef.current == 0) {
+          sequenceRef.current = e.seq + 1;
           if (e.isBreak) {
             setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
             setCurrentSubtitle("");
@@ -134,7 +134,7 @@ export function Participant() {
             setCurrentSubtitle(e.speech);
           }
         } else {
-          if (expectedSeqRef.current == e.seq) {
+          if (sequenceRef.current == e.seq) {
             if (e.isBreak) {
               setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
               setCurrentSubtitle("");
@@ -142,7 +142,7 @@ export function Participant() {
               setCurrentSubtitle(e.speech);
             }
             fillGap();
-          } else if (e.seq > expectedSeqRef.current) {
+          } else if (e.seq > sequenceRef.current) {
             bufferRef.current.set(e.seq, {
               speech: e.speech,
               isBreak: e.isBreak,
@@ -236,25 +236,36 @@ export function Participant() {
         <Heading size="lg" color={colorTheme.primary}>
           Session #{sessionId}
         </Heading>
-        <Box
-          h="45vh"
-          w="80vw"
-          overflowX="hidden"
-          overflowY="scroll"
-          backgroundColor="white"
-          padding="2"
-          borderRadius="5"
-        >
-          <Heading size={"sm"} color={"#92989c"} textAlign="left">
-            {subtitleHistory.map((s, id) => {
-              return <div key={id}>{s}</div>;
-            })}
-          </Heading>
-          <Heading size={"sm"} color={colorTheme.primary} textAlign="left">
-            {currentSubtitle}
-          </Heading>
-          <div ref={transcriptContainer}></div>
-        </Box>
+        <Stack direction="row">
+          <Box
+            h="45vh"
+            w="40vw"
+            overflowX="hidden"
+            overflowY="scroll"
+            backgroundColor="white"
+            padding="2"
+            borderRadius="5"
+          >
+            <Heading size={"sm"} color={"#92989c"} textAlign="left">
+              {subtitleHistory.map((s, id) => {
+                return <div key={id}>{s}</div>;
+              })}
+            </Heading>
+            <Heading size={"sm"} color={colorTheme.primary} textAlign="left">
+              {currentSubtitle}
+            </Heading>
+            <div ref={transcriptContainer}></div>
+          </Box>
+          <Box
+            h="45vh"
+            w="200px"
+            overflowX="hidden"
+            overflowY="scroll"
+            backgroundColor="white"
+            padding="2"
+            borderRadius="5"
+          ></Box>
+        </Stack>
         <Box w="30vw">
           <Text>Speech language</Text>
           <Select
