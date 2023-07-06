@@ -149,7 +149,6 @@ export function Participant() {
             fillGap();
           }
         }
-        sequenceRef.current = expectedSeqRef.current;
       });
       socket.connect();
       setInterval(() => {

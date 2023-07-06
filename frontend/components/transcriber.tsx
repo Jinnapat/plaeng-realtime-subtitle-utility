@@ -158,7 +158,6 @@ export function Transcriber() {
             fillGap();
           }
         }
-        sequenceRef.current = expectedSeqRef.current;
       });
       socket.connect();
       setInterval(() => {
