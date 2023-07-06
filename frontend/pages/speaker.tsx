@@ -6,7 +6,7 @@ export default function Speaker() {
   return (
     <Stack h="100vh">
       <AppBar />
-      <Box paddingTop="5vh">
+      <Box>
         <Transcriber />
       </Box>
     </Stack>

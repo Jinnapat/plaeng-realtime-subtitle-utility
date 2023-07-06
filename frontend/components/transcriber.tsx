@@ -237,20 +237,29 @@ export function Transcriber() {
         </ModalContent>
       </Modal>
       <Stack alignItems="center" spacing={5}>
-        <Heading size="xl" color={colorTheme.primary}>
+        <Heading size="lg" color={colorTheme.primary}>
           Session #{sessionId}
         </Heading>
-        <Box h="30vh" w="70vw" overflowX="hidden" overflowY="scroll">
-          <Heading size="lg" color="#92989c" textAlign="center">
-            <div>{subtitleHistory[subtitleHistory.length]}</div>
+        <Box
+          h="50vh"
+          w="80vw"
+          overflowX="hidden"
+          overflowY="scroll"
+          backgroundColor="white"
+          padding="2"
+          borderRadius="5"
+        >
+          <Heading size={"sm"} color={"#92989c"} textAlign="left">
+            {subtitleHistory.map((s, id) => {
+              return <div key={id}>{s}</div>;
+            })}
           </Heading>
-          <Heading size="lg" color={colorTheme.primary} textAlign="center">
+          <Heading size={"sm"} color={colorTheme.primary} textAlign="left">
             {currentSubtitle}
           </Heading>
           <div ref={transcriptContainer}></div>
         </Box>
         <Box w="30vw">
-          <Text>You are the host.</Text>
           <Text>Speech language</Text>
           <Select
             onChange={(e) => {
@@ -285,15 +294,24 @@ export function Transcriber() {
             })}
           </Select>
         </Box>
-        {
+        <Box>
           <Button
             bgColor={colorTheme.primary}
             color="white"
             onClick={toggleListening}
+            mr="3"
           >
-            {listening ? "Stop listening" : "Start listening"}
+            {listening ? "Stop speaking" : "Start speaking"}
           </Button>
-        }
+          <Button
+            onClick={() => {
+              socket.disconnect();
+              router.push("/");
+            }}
+          >
+            leave
+          </Button>
+        </Box>
       </Stack>
     </>
   );
