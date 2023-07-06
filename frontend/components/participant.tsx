@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
+import { Spinner } from "@chakra-ui/react";
 import { colorTheme, speechToTextParameter } from "@/uitls/constants";
 import {
   defaultTranslateLanguage,
@@ -59,6 +60,7 @@ export function Participant() {
   const [sessionId, setSessionId] = useState("");
   const [currentSubtitle, setCurrentSubtitle] = useState("");
   const [subtitleHistory, setSubtitleHistory] = useState<string[]>([]);
+  const [processing, setProcessing] = useState(false);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -174,6 +176,7 @@ export function Participant() {
 
   function onMessageEnd(event: any) {
     resetTranscript();
+    setProcessing(false);
     lastEmissionRef.current = "";
     SpeechRecognition.getRecognition()!.lang = language;
     SpeechRecognition.getRecognition()?.start();
@@ -192,6 +195,7 @@ export function Participant() {
       SpeechRecognition.getRecognition()!.onend = onMessageEnd;
       SpeechRecognition.getRecognition()!.onspeechstart = () => {
         sendSpeech("break", languageRef.current, true);
+        setProcessing(true);
       };
     }
   }
@@ -307,6 +311,7 @@ export function Participant() {
             leave
           </Button>
         </Box>
+        <Spinner fontSize="xl" hidden={!processing} />
       </Stack>
     </>
   );
