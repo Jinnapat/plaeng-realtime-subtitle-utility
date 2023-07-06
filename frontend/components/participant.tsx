@@ -85,7 +85,7 @@ export function Participant() {
   currentSubtitleRef.current = currentSubtitle;
 
   async function fillGap() {
-    let counter = expectedSeqRef.current;
+    let counter = sequenceRef.current;
     counter = counter + 1;
     if (bufferRef.current.size > 0) {
       while (bufferRef.current.has(counter)) {
@@ -100,7 +100,7 @@ export function Participant() {
         counter = counter + 1;
       }
     }
-    expectedSeqRef.current = counter;
+    sequenceRef.current = counter;
   }
 
   useEffect(() => {
@@ -124,8 +124,8 @@ export function Participant() {
       });
       socket.on("subtitle", (e) => {
         transcriptContainer.current?.scrollIntoView({ behavior: "smooth" });
-        if (expectedSeqRef.current == -1) {
-          expectedSeqRef.current = e.seq + 1;
+        if (sequenceRef.current == 0) {
+          sequenceRef.current = e.seq + 1;
           if (e.isBreak) {
             setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
             setCurrentSubtitle("");
@@ -133,7 +133,7 @@ export function Participant() {
             setCurrentSubtitle(e.speech);
           }
         } else {
-          if (expectedSeqRef.current == e.seq) {
+          if (sequenceRef.current == e.seq) {
             if (e.isBreak) {
               setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
               setCurrentSubtitle("");
@@ -141,7 +141,7 @@ export function Participant() {
               setCurrentSubtitle(e.speech);
             }
             fillGap();
-          } else if (e.seq > expectedSeqRef.current) {
+          } else if (e.seq > sequenceRef.current) {
             bufferRef.current.set(e.seq, {
               speech: e.speech,
               isBreak: e.isBreak,
