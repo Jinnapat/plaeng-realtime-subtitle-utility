@@ -158,6 +158,7 @@ export function Transcriber() {
             fillGap();
           }
         }
+        sequenceRef.current = expectedSeqRef.current;
       });
       socket.connect();
       setInterval(() => {
@@ -244,25 +245,36 @@ export function Transcriber() {
         <Heading size="lg" color={colorTheme.primary}>
           Session #{sessionId}
         </Heading>
-        <Box
-          h="45vh"
-          w="80vw"
-          overflowX="hidden"
-          overflowY="scroll"
-          backgroundColor="white"
-          padding="2"
-          borderRadius="5"
-        >
-          <Heading size={"sm"} color={"#92989c"} textAlign="left">
-            {subtitleHistory.map((s, id) => {
-              return <div key={id}>{s}</div>;
-            })}
-          </Heading>
-          <Heading size={"sm"} color={colorTheme.primary} textAlign="left">
-            {currentSubtitle}
-          </Heading>
-          <div ref={transcriptContainer}></div>
-        </Box>
+        <Stack direction="row">
+          <Box
+            h="45vh"
+            w="40vw"
+            overflowX="hidden"
+            overflowY="scroll"
+            backgroundColor="white"
+            padding="2"
+            borderRadius="5"
+          >
+            <Heading size={"sm"} color={"#92989c"} textAlign="left">
+              {subtitleHistory.map((s, id) => {
+                return <div key={id}>{s}</div>;
+              })}
+            </Heading>
+            <Heading size={"sm"} color={colorTheme.primary} textAlign="left">
+              {currentSubtitle}
+            </Heading>
+            <div ref={transcriptContainer}></div>
+          </Box>
+          <Box
+            h="45vh"
+            w="200px"
+            overflowX="hidden"
+            overflowY="scroll"
+            backgroundColor="white"
+            padding="2"
+            borderRadius="5"
+          ></Box>
+        </Stack>
         <Box w="30vw">
           <Text>Speech language</Text>
           <Select
