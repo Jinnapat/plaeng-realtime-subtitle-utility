@@ -41,6 +41,9 @@ export class SessionService {
     isParticipant(clientId: string){
         return this.participantToSession.has(clientId)
     }
+    getSessionFromSessionId(sessionId: string) {
+        return this.sessions.get(sessionId);
+    }
     getSessionFromHostWsId(hostWsId: string){
         const sessionId = this.hostToSession.get(hostWsId);
         return this.sessions.get(sessionId);
@@ -54,7 +57,7 @@ export class SessionService {
         return this.participantToSession.delete(clientId);
     }
 
-    async joinSession(sessionId : string, user: Participant, server: Server){
+    async joinSession(sessionId : string, user: Participant){
         if(!this.sessions.has(sessionId)){
             throw new WsException({message : "Session not found", status : 404})
         }else{
@@ -70,10 +73,6 @@ export class SessionService {
                 this.sessions.get(sessionId).subRoom[subRoomIdx].participantsWSId.push(user.socketId);
             }
             this.participantToSession.set(user.socketId,sessionId);
-            // this.sessions.get(sessionId).subRoom[subRoomIdx].participantsWSId.forEach((wsId) => {
-            //     server.to(wsId).emit("user_joined", user.name);
-            //     console.log("sent to " + wsId);
-            // });
             Logger.log(user.socketId + " joined session " + sessionId, "session join");
             return true;
         }

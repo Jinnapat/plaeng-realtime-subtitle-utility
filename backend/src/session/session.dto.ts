@@ -34,3 +34,10 @@ export interface createSessionFixedIdDto{
     subtitleLang : string,
     sessionId : string
 }
+
+export interface IntroduceDto{
+    name : string,
+    wsId : string,
+    iamId: string,
+    seq: number
+}

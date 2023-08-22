@@ -62,6 +62,7 @@ export function Transcriber() {
   const [subtitleHistory, setSubtitleHistory] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
   const [roomMembers, setRoomMembers] = useState<string[]>([]);
+  const [roomMembersId, setRoomMembersId] = useState<string[]>([]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -78,12 +79,22 @@ export function Transcriber() {
     new Map<number, subtitleDto>()
   );
   const sequenceRef = useRef<any>(0);
+  const roomMembersRef = useRef<any>();
+  const roomMembersIdRef = useRef<any>();
 
   languageRef.current = language;
   lastEmissionRef.current = "";
   transcriptRef.current = transcript;
   subtitleHistoryRef.current = subtitleHistory;
   currentSubtitleRef.current = currentSubtitle;
+  roomMembersRef.current = roomMembers;
+  roomMembersIdRef.current = roomMembersId;
+
+  function goBack() {
+    socket.disconnect();
+    socket.removeAllListeners();
+    router.push("/");
+  }
 
   async function fillGap() {
     let counter = sequenceRef.current;
@@ -106,84 +117,112 @@ export function Transcriber() {
 
   useEffect(() => {
     if (!router.isReady) return;
+    if (sessionId != "") return;
     const query = new URLSearchParams(window.location.search);
     const inputSessionId = query.get("sessionId");
     const inputName = query.get("name");
-    if (sessionId == "") {
-      if (inputSessionId === null) {
-        socket.on("connect", () => {
-          socket.emit(
-            "hostSession",
-            languageTranslateTag[0].tag,
-            (res: any) => {
-              setSessionId(res);
-            }
-          );
+    if (!inputName) return;
+    if (inputSessionId === null) {
+      socket.on("connect", () => {
+        socket.emit("hostSession", languageTranslateTag[0].tag, (res: any) => {
+          setSessionId(res);
+          setRoomMembers([inputName]);
+          setRoomMembersId([socket.id]);
         });
-      } else {
-        socket.on("connect", () => {
-          socket.emit(
-            "joinSession",
-            {
-              language: defaultTranslateLanguage,
-              sessionId: inputSessionId,
-              name: inputName,
-            },
-            (res: any) => {
-              if (res == true && inputSessionId !== null) {
-                setSessionId(inputSessionId);
-              }
+      });
+    } else {
+      socket.on("connect", () => {
+        socket.emit(
+          "joinSession",
+          {
+            language: defaultTranslateLanguage,
+            sessionId: inputSessionId,
+            name: inputName,
+          },
+          (res: any) => {
+            if (res == true && inputSessionId !== null) {
+              setSessionId(inputSessionId);
+              setRoomMembers([inputName]);
+              setRoomMembersId([socket.id]);
             }
-          );
-        });
+          }
+        );
+      });
+    }
+    socket.on("user_left", (wsId: string) => {
+      let targetIdx = roomMembersIdRef.current.findIndex(
+        (val: string) => val === wsId
+      );
+      setRoomMembers(
+        roomMembersRef.current.filter((_: any, idx: any) => idx != targetIdx)
+      );
+      setRoomMembersId(
+        roomMembersIdRef.current.filter((_: any, idx: any) => idx != targetIdx)
+      );
+    });
+    socket.on("sessionEnd", () => {
+      goBack();
+    });
+    socket.on("user_joined", ({ name, wsId }) => {
+      setRoomMembers([...roomMembersRef.current, name]);
+      setRoomMembersId([...roomMembersIdRef.current, wsId]);
+      socket.emit("introduce", {
+        name: inputName,
+        wsId: wsId,
+        iamId: socket.id,
+        seq: sequenceRef.current,
+      });
+    });
+    socket.on("introduce_back", ({ name, wsId, seq }) => {
+      setRoomMembers([...roomMembersRef.current, name]);
+      setRoomMembersId([...roomMembersIdRef.current, wsId]);
+      if (seq > sequenceRef.current) {
+        sequenceRef.current = seq;
       }
-      socket.on("user_left", (e: string) => {
-        let targetIdx = roomMembers.findIndex((val) => val === e);
-        setRoomMembers(roomMembers.filter((_, idx) => idx != targetIdx));
-      });
-      socket.on("user_joined", (e: string) => {
-        console.log(e);
-        setRoomMembers(roomMembers.concat([e]));
-      });
-      socket.on("subtitle", (e) => {
-        transcriptContainer.current?.scrollIntoView({ behavior: "smooth" });
-        if (sequenceRef.current == 0) {
-          sequenceRef.current = e.seq + 1;
+    });
+    socket.on("subtitle", (e) => {
+      const speakerIdx = roomMembersIdRef.current.findIndex(
+        (val: string) => val === e.speaker
+      );
+      const speakerName = roomMembersRef.current[speakerIdx] + " : ";
+
+      transcriptContainer.current?.scrollIntoView({ behavior: "smooth" });
+      if (sequenceRef.current == 0) {
+        sequenceRef.current = e.seq + 1;
+        if (e.isBreak) {
+          setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
+          setCurrentSubtitle("");
+        } else {
+          setCurrentSubtitle(speakerName + e.speech);
+        }
+      } else {
+        if (sequenceRef.current == e.seq) {
           if (e.isBreak) {
             setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
             setCurrentSubtitle("");
           } else {
-            setCurrentSubtitle(e.speech);
+            setCurrentSubtitle(speakerName + e.speech);
           }
-        } else {
-          if (sequenceRef.current == e.seq) {
-            if (e.isBreak) {
-              setSubtitleHistory((old) => [...old, currentSubtitleRef.current]);
-              setCurrentSubtitle("");
-            } else {
-              setCurrentSubtitle(e.speech);
-            }
-            fillGap();
-          } else if (e.seq > sequenceRef.current) {
-            bufferRef.current.set(e.seq, {
-              speech: e.speech,
-              isBreak: e.isBreak,
-            });
-            fillGap();
-          }
+          fillGap();
+        } else if (e.seq > sequenceRef.current) {
+          bufferRef.current.set(e.seq, {
+            speech: e.speech,
+            isBreak: e.isBreak,
+          });
+          fillGap();
         }
-      });
-      socket.connect();
-      setInterval(() => {
-        if (
-          transcriptRef.current.trim() != "" &&
-          lastEmissionRef.current != transcriptRef.current
-        ) {
-          lastEmissionRef.current = transcriptRef.current;
-          sendSpeech(transcriptRef.current, languageRef.current, false);
-        }
-      }, speechToTextParameter.emitInterval);
-    }
+      }
+    });
+    socket.connect();
+    setInterval(() => {
+      if (
+        transcriptRef.current.trim() != "" &&
+        lastEmissionRef.current != transcriptRef.current
+      ) {
+        lastEmissionRef.current = transcriptRef.current;
+        sendSpeech(transcriptRef.current, languageRef.current, false);
+      }
+    }, speechToTextParameter.emitInterval);
   }, [router.isReady]);
 
   useEffect(() => {
@@ -354,8 +393,7 @@ export function Transcriber() {
             backgroundColor={"#9f1e00"}
             color={"white"}
             onClick={() => {
-              socket.disconnect();
-              router.push("/");
+              goBack();
             }}
           >
             leave

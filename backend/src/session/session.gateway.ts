@@ -4,7 +4,7 @@ import {ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSoc
 import { OnGatewayDisconnect } from '@nestjs/websockets/interfaces';
 import * as translate from 'translate-google';
 import { Server, Socket } from 'socket.io';
-import { ChangeLanguageDto, JoinSessionDto, SpeechDto } from './session.dto';
+import { ChangeLanguageDto, JoinSessionDto, SpeechDto, IntroduceDto } from './session.dto';
 import { SessionService } from './session.service';
 
 @WebSocketGateway({
@@ -18,10 +18,8 @@ export class SessionGateway implements OnGatewayDisconnect{
   @WebSocketServer()
   server : Server;
   
-  constructor(private readonly sessionService: SessionService,
-    private readonly configService: ConfigService) {
-    
-  }
+  constructor(private readonly sessionService: SessionService) {}
+
   handleDisconnect(client: Socket) {
     if(this.sessionService.isHost(client.id)){
       const session = this.sessionService.getSessionFromHostWsId(client.id);
@@ -34,6 +32,13 @@ export class SessionGateway implements OnGatewayDisconnect{
       return this.sessionService.hostEndSession(client.id);
     }
     else if(this.sessionService.isParticipant(client.id)){
+      const session = this.sessionService.getSessionFromParticipantWsId(client.id);
+      this.server.to(session.hostSocketId).emit("user_left", client.id);
+      session.subRoom.forEach(sr=>{
+        sr.participantsWSId.forEach(wsId=>{
+          this.server.to(wsId).emit("user_left", client.id);
+        })
+      })
       return this.sessionService.removeUserFromSession(client.id);
     }
   }
@@ -51,11 +56,24 @@ export class SessionGateway implements OnGatewayDisconnect{
     @MessageBody() dto : JoinSessionDto,
     @ConnectedSocket() client: Socket
   ){
+
+    const session = this.sessionService.getSessionFromSessionId(dto.sessionId);
+    const hostId = session.hostSocketId;
+
     const joinSessionResult = await this.sessionService.joinSession(dto.sessionId,{
       language: dto.language,
       socketId: client.id,
       name: dto.name
-    }, this.server);
+    });
+    this.server.to(hostId).emit("user_joined", {name: dto.name, wsId: client.id});
+    for (let j=0; j<session.subRoom.length; j++) {
+      const sr = session.subRoom[j];
+      for (let i = 0; i < sr.participantsWSId.length; i++) {
+        const wsId = sr.participantsWSId[i];
+        if (wsId == client.id) continue;
+        this.server.to(wsId).emit("user_joined",{name: dto.name, wsId: client.id});
+      }
+    }
     return joinSessionResult;
   }
 
@@ -75,7 +93,6 @@ export class SessionGateway implements OnGatewayDisconnect{
     @MessageBody() dto : SpeechDto,
     @ConnectedSocket() client: Socket
   ){
-      Logger.log(dto.speech)
       const session = this.sessionService.isHost(client.id) ? this.sessionService.getSessionFromHostWsId(client.id) : this.sessionService.getSessionFromParticipantWsId(client.id);
       const hostId = session.hostSocketId;
 
@@ -92,7 +109,8 @@ export class SessionGateway implements OnGatewayDisconnect{
       this.server.to(hostId).emit("subtitle",{
         seq : dto.seq,
         speech : speechToHost,
-        isBreak : dto.isBreak
+        isBreak : dto.isBreak,
+        speaker: client.id
       });
       // this.server.to(host.id)
       for (let j=0; j<session.subRoom.length; j++) {
@@ -119,9 +137,18 @@ export class SessionGateway implements OnGatewayDisconnect{
           this.server.to(wsId).emit("subtitle",{
             seq : dto.seq,
             speech : speechToClient,
-            isBreak : dto.isBreak
+            isBreak : dto.isBreak,
+            speaker: client.id
           });
         }
       }
+  }
+
+  @SubscribeMessage('introduce')
+  async introduce(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() dto: IntroduceDto
+  ){
+    return this.server.to(dto.wsId).emit("introduce_back", { name: dto.name, wsId: dto.iamId, seq: dto.seq })
   }
 }
