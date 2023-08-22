@@ -2,6 +2,7 @@
 import { Spinner } from "@chakra-ui/react";
 import { colorTheme, speechToTextParameter } from "@/uitls/constants";
 import {
+  defaultTranslateLanguage,
   languageSpeechTags,
   languageTranslateTag,
   speechToTranslate,
@@ -60,6 +61,7 @@ export function Transcriber() {
   const [currentSubtitle, setCurrentSubtitle] = useState("");
   const [subtitleHistory, setSubtitleHistory] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
+  const [roomMembers, setRoomMembers] = useState<string[]>([]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -105,9 +107,9 @@ export function Transcriber() {
   useEffect(() => {
     if (!router.isReady) return;
     const query = new URLSearchParams(window.location.search);
-    const specialSid = query.get("special");
+    const inputSessionId = query.get("sessionId");
     if (sessionId == "") {
-      if (specialSid === null) {
+      if (inputSessionId === null) {
         socket.on("connect", () => {
           socket.emit(
             "hostSession",
@@ -120,17 +122,20 @@ export function Transcriber() {
       } else {
         socket.on("connect", () => {
           socket.emit(
-            "hostSessionFixedId",
+            "joinSession",
             {
-              subtitleLang: languageTranslateTag[0].tag,
-              sessionId: specialSid,
+              language: defaultTranslateLanguage,
+              sessionId: inputSessionId,
             },
             (res: any) => {
-              setSessionId(res);
+              if (res == true && inputSessionId !== null) {
+                setSessionId(inputSessionId);
+              }
             }
           );
         });
       }
+      socket.on("user_joined", (e) => {});
       socket.on("subtitle", (e) => {
         transcriptContainer.current?.scrollIntoView({ behavior: "smooth" });
         if (sequenceRef.current == 0) {
@@ -267,12 +272,27 @@ export function Transcriber() {
           <Box
             h="45vh"
             w="200px"
-            overflowX="hidden"
-            overflowY="scroll"
             backgroundColor="white"
             padding="2"
             borderRadius="5"
-          ></Box>
+          >
+            <Text fontWeight={"bold"} fontSize={"md"}>
+              Member list
+            </Text>
+            <Box
+              border={"1px"}
+              padding={"2"}
+              height={"39vh"}
+              overflowX={"hidden"}
+              overflowY={"scroll"}
+            >
+              {roomMembers.map((memberName, idx) => (
+                <Text key={idx} fontSize={"sm"}>
+                  {memberName}
+                </Text>
+              ))}
+            </Box>
+          </Box>
         </Stack>
         <Box w="30vw">
           <Text color={"white"}>Speech language</Text>

@@ -1,6 +1,5 @@
 import AppBar from "@/components/appbar";
-import { colorTheme } from "@/uitls/constants";
-import { Button, Center, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Button, Center, Heading, Input, Stack } from "@chakra-ui/react";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -54,7 +53,7 @@ export default function Home() {
               color={"white"}
               onClick={() => {
                 router.push(
-                  "/session?sessionId=" + sessionId + "&name=" + name
+                  "/speaker?sessionId=" + sessionId + "&name=" + name
                 );
               }}
             >
