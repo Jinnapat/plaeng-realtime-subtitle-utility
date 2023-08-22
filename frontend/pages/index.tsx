@@ -1,16 +1,8 @@
 import AppBar from "@/components/appbar";
 import { colorTheme } from "@/uitls/constants";
-import {
-  Box,
-  Button,
-  Center,
-  Heading,
-  Input,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
+import { Button, Center, Heading, Input, Stack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 export default function Home() {
   const router = useRouter();
@@ -21,13 +13,18 @@ export default function Home() {
     <Stack h={"85vh"}>
       <AppBar />
       <Center h={"full"}>
-        <Stack alignItems={"center"} spacing={10}>
-          <Heading size="xl" color={colorTheme.primary}>
-            Bring subtitle to real life
-          </Heading>
+        <Stack
+          alignItems={"center"}
+          spacing={10}
+          backgroundColor={"white"}
+          padding={"10"}
+          borderRadius={"xl"}
+        >
+          <Heading size="md">Bring subtitle to real life</Heading>
           <Input
             bgColor={"white"}
             placeholder={"enter your name"}
+            textAlign={"center"}
             onChange={(e) => {
               setName(e.currentTarget.value);
             }}
@@ -35,14 +32,25 @@ export default function Home() {
           <Input
             bgColor={"white"}
             placeholder={"session id"}
+            textAlign={"center"}
             onChange={(e) => {
               setSessionId(e.currentTarget.value);
             }}
           ></Input>
-          <Stack w={"20vw"} minWidth={"150px"}>
+          <Stack w={"full"} minWidth={"150px"}>
+            <Button
+              isDisabled={name == ""}
+              bgColor={"#ffc40c"}
+              color={"white"}
+              onClick={() => {
+                router.push("/speaker?name=" + name);
+              }}
+            >
+              Host a new session
+            </Button>
             <Button
               isDisabled={name == "" || sessionId == ""}
-              bgColor={colorTheme.primary}
+              bgColor={"#ffc40c"}
               color={"white"}
               onClick={() => {
                 router.push(
@@ -50,20 +58,7 @@ export default function Home() {
                 );
               }}
             >
-              Join session
-            </Button>
-            <Text fontSize="lg" textAlign="center" fontWeight={500}>
-              or
-            </Text>
-            <Button
-              isDisabled={name == ""}
-              bgColor={colorTheme.primary}
-              color={"white"}
-              onClick={() => {
-                router.push("/speaker?name=" + name);
-              }}
-            >
-              Host new session
+              Join a session
             </Button>
           </Stack>
         </Stack>

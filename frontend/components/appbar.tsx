@@ -1,5 +1,5 @@
 import { colorTheme } from "@/uitls/constants";
-import { Box, Heading, Stack, Text } from "@chakra-ui/react";
+import { Box, Heading, Stack, Image } from "@chakra-ui/react";
 
 export default function AppBar() {
   return (

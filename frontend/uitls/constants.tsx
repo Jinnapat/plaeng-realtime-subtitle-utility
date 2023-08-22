@@ -1,10 +1,10 @@
 export const colorTheme = {
-    primary : '#183347',
-    secondary: '#5ce1e6',
-}
+  primary: "#0a1a39",
+  secondary: "#142444",
+};
 
-export const speechToTextParameter={
-    resultThreshold : 50,
-    speechGapMultiplier: 80,
-    emitInterval:20
-}
+export const speechToTextParameter = {
+  resultThreshold: 50,
+  speechGapMultiplier: 80,
+  emitInterval: 20,
+};
