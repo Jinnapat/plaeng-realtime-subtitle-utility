@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { ChangeLanguageDto, Participant, Session } from './session.dto';
+import { Server } from 'socket.io';
 
 @Injectable()
 export class SessionService {
@@ -53,7 +54,7 @@ export class SessionService {
         return this.participantToSession.delete(clientId);
     }
 
-    async joinSession(sessionId : string, user: Participant){
+    async joinSession(sessionId : string, user: Participant, server: Server){
         if(!this.sessions.has(sessionId)){
             throw new WsException({message : "Session not found", status : 404})
         }else{
@@ -69,6 +70,10 @@ export class SessionService {
                 this.sessions.get(sessionId).subRoom[subRoomIdx].participantsWSId.push(user.socketId);
             }
             this.participantToSession.set(user.socketId,sessionId);
+            // this.sessions.get(sessionId).subRoom[subRoomIdx].participantsWSId.forEach((wsId) => {
+            //     server.to(wsId).emit("user_joined", user.name);
+            //     console.log("sent to " + wsId);
+            // });
             Logger.log(user.socketId + " joined session " + sessionId, "session join");
             return true;
         }
@@ -78,6 +83,14 @@ export class SessionService {
         if(!this.sessions.has(sessionId)){
             throw new WsException({message : "Session not found", status : 404})
         }
+
+        if(this.isHost(user.socketId)){
+            const sessionId = this.hostToSession.get(user.socketId);
+            this.sessions.get(sessionId).hostSubtitleLanguage = user.language;
+            Logger.log("session " + sessionId +" to " + this.sessions.get(sessionId).hostSubtitleLanguage, "Host change language");
+            return true;
+        }
+
         for(let i = 0; i < this.sessions.get(sessionId).subRoom.length; i++){
             const userIdx = this.sessions.get(sessionId).subRoom[i].participantsWSId.findIndex((id)=>{
                 return id == user.socketId;
@@ -100,17 +113,6 @@ export class SessionService {
             }
         }
         throw new WsException({message : "User is not in the session", status : 404})
-    }
-
-    async hostChangeLanguage(language: string,socketId :string){
-        if(this.isHost(socketId)){
-            const sessionId = this.hostToSession.get(socketId);
-            this.sessions.get(sessionId).hostSubtitleLanguage = language;
-            Logger.log("session " + sessionId +" to " + this.sessions.get(sessionId).hostSubtitleLanguage, "Host change language")
-        }
-        else{
-            throw new WsException({message : "Host not found", status : 404})
-        }
     }
 
     async removeUserFromSession(socketId: string){

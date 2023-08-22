@@ -1,11 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config/dist';
-import {ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer, WsException } from '@nestjs/websockets';
+import {ConnectedSocket, MessageBody, SubscribeMessage, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { OnGatewayDisconnect } from '@nestjs/websockets/interfaces';
-import axios from 'axios';
 import * as translate from 'translate-google';
 import { Server, Socket } from 'socket.io';
-import { ChangeLanguageDto, createSessionFixedIdDto, HostSpeechDto, JoinSessionDto, SpeechDto } from './session.dto';
+import { ChangeLanguageDto, JoinSessionDto, SpeechDto } from './session.dto';
 import { SessionService } from './session.service';
 
 @WebSocketGateway({
@@ -47,14 +46,6 @@ export class SessionGateway implements OnGatewayDisconnect{
     return await this.sessionService.newSession(host.id,subtitleLang)
   }
 
-  @SubscribeMessage('hostSessionFixedId')
-  async createSessionFixedId(
-    @ConnectedSocket() host : Socket,
-    @MessageBody() dto : createSessionFixedIdDto
-  ){
-    return await this.sessionService.newSessionFixedId(host.id,dto.subtitleLang,dto.sessionId);
-  }
-
   @SubscribeMessage('joinSession')
   async joinSession(
     @MessageBody() dto : JoinSessionDto,
@@ -62,8 +53,9 @@ export class SessionGateway implements OnGatewayDisconnect{
   ){
     const joinSessionResult = await this.sessionService.joinSession(dto.sessionId,{
       language: dto.language,
-      socketId: client.id
-    });
+      socketId: client.id,
+      name: dto.name
+    }, this.server);
     return joinSessionResult;
   }
 
@@ -83,132 +75,53 @@ export class SessionGateway implements OnGatewayDisconnect{
     @MessageBody() dto : SpeechDto,
     @ConnectedSocket() client: Socket
   ){
-    console.log(dto)
-      const session = this.sessionService.getSessionFromParticipantWsId(client.id);
+      Logger.log(dto.speech)
+      const session = this.sessionService.isHost(client.id) ? this.sessionService.getSessionFromHostWsId(client.id) : this.sessionService.getSessionFromParticipantWsId(client.id);
       const hostId = session.hostSocketId;
+
+      let speechToHost = '';
       if(dto.language == session.hostSubtitleLanguage  || dto.speech.trim() == "" || dto.isBreak){
-        if(dto.isBreak){
-          this.server.to(hostId).emit("subtitle",{
-            seq : dto.seq,
-            speech : '',
-            isBreak : dto.isBreak
-          });
-        }else{
-          this.server.to(hostId).emit("subtitle",{
-            seq : dto.seq,
-            speech : dto.speech,
-            isBreak : dto.isBreak
-          });
-        }
-      }else if(dto.speech !== null && dto.speech.trim() !== ''){
+        speechToHost = dto.isBreak ? '' : dto.speech;
+      } else if (dto.speech !== null && dto.speech.trim() !== '') {
         try{
-          const translatResult = await translate(dto.speech.toString(), {from : dto.language, to : session.hostSubtitleLanguage});
-          this.server.to(hostId).emit("subtitle",{
-            seq : dto.seq,
-            speech : translatResult,
-            isBreak : dto.isBreak
-          });
-        }catch(err){
+          speechToHost = await translate(dto.speech.toString(), {from : dto.language, to : session.hostSubtitleLanguage});
+        } catch(err){
           Logger.error(err, "Translator error");
         }
       }
+      this.server.to(hostId).emit("subtitle",{
+        seq : dto.seq,
+        speech : speechToHost,
+        isBreak : dto.isBreak
+      });
       // this.server.to(host.id)
-      session.subRoom.forEach(async sr=>{
-        if(dto.language == sr.language || dto.speech.trim() == "" || dto.isBreak){
-          sr.participantsWSId.forEach(wsId=>{
-            this.server.to(wsId).emit("subtitle",{
-              seq : dto.seq,
-              speech : dto.speech,
-              isBreak : dto.isBreak
-            });
-          })
-        }
-        else if(dto.speech !== null && dto.speech.trim() !== ''){
-          try{
-            const translatResult = await translate(dto.speech.toString(), {from : dto.language, to : sr.language});
-            sr.participantsWSId.forEach(wsId=>{
-              this.server.to(wsId).emit("subtitle",{
-                seq : dto.seq,
-                speech : translatResult,
-                isBreak : dto.isBreak
-              });
-            })
-          }catch(err){
-            Logger.error(err, "Translator error");
+      for (let j=0; j<session.subRoom.length; j++) {
+        const sr = session.subRoom[j];
+        const translated = {};
+        for (let i = 0; i < sr.participantsWSId.length; i++) {
+          
+          const wsId = sr.participantsWSId[i];
+          let speechToClient = "";
+          
+          if(dto.language == sr.language || dto.speech.trim() == "" || dto.isBreak) {
+            speechToClient = dto.speech;
+          } else if(dto.speech !== null && dto.speech.trim() !== '') {
+            if (!translated[sr.language]) {
+              try {
+                translated[sr.language] = await translate(dto.speech.toString(), {from : dto.language, to : sr.language});
+              } catch(err){
+                Logger.error(err, "Translator error");
+              }
+            }
+            speechToClient = translated[sr.language];
           }
-          }
-      })
-  }
 
-  @SubscribeMessage('hostChangeLanguage')
-  async hostChangeLanguage(
-    @MessageBody() language: string,
-    @ConnectedSocket() host: Socket
-  ){
-    return await this.sessionService.hostChangeLanguage(language,host.id)
-  }
-
-  @SubscribeMessage('hostSpeech')
-  async handleHostSpeech(
-    @MessageBody() dto : HostSpeechDto,
-    @ConnectedSocket() host: Socket
-  ){
-    if(this.sessionService.isHost(host.id)){
-      const session = this.sessionService.getSessionFromHostWsId(host.id);
-      if(dto.language == session.hostSubtitleLanguage  || dto.speech.trim() == "" || dto.isBreak){
-        if(dto.isBreak){
-          this.server.to(host.id).emit("subtitle",{
+          this.server.to(wsId).emit("subtitle",{
             seq : dto.seq,
-            speech : '',
+            speech : speechToClient,
             isBreak : dto.isBreak
           });
-        }else{
-          this.server.to(host.id).emit("subtitle",{
-            seq : dto.seq,
-            speech : dto.speech,
-            isBreak : dto.isBreak
-          });
-        }
-      }else if(dto.speech !== null && dto.speech.trim() !== ''){
-        try{
-          const translatResult = await translate(dto.speech.toString(), {from : dto.language, to : session.hostSubtitleLanguage});
-          this.server.to(host.id).emit("subtitle",{
-            seq : dto.seq,
-            speech : translatResult,
-            isBreak : dto.isBreak
-          });
-        }catch(err){
-          Logger.error(err, "Translator error");
         }
       }
-      // this.server.to(host.id)
-      session.subRoom.forEach(async sr=>{
-        if(dto.language == sr.language || dto.speech.trim() == "" || dto.isBreak){
-          sr.participantsWSId.forEach(wsId=>{
-            this.server.to(wsId).emit("subtitle",{
-              seq : dto.seq,
-              speech : dto.speech,
-              isBreak : dto.isBreak
-            });
-          })
-        }
-        else if(dto.speech !== null && dto.speech.trim() !== ''){
-          try{
-            const translatResult = await translate(dto.speech.toString(), {from : dto.language, to : sr.language});
-            sr.participantsWSId.forEach(wsId=>{
-              this.server.to(wsId).emit("subtitle",{
-                seq : dto.seq,
-                speech : translatResult,
-                isBreak : dto.isBreak
-              });
-            })
-          }catch(err){
-            Logger.error(err, "Translator error");
-          }
-          }
-      })
-    }else{
-      throw new WsException({message : "Host not found", status : 404})
-    }
   }
 }

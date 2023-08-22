@@ -108,6 +108,7 @@ export function Transcriber() {
     if (!router.isReady) return;
     const query = new URLSearchParams(window.location.search);
     const inputSessionId = query.get("sessionId");
+    const inputName = query.get("name");
     if (sessionId == "") {
       if (inputSessionId === null) {
         socket.on("connect", () => {
@@ -126,6 +127,7 @@ export function Transcriber() {
             {
               language: defaultTranslateLanguage,
               sessionId: inputSessionId,
+              name: inputName,
             },
             (res: any) => {
               if (res == true && inputSessionId !== null) {
@@ -135,7 +137,14 @@ export function Transcriber() {
           );
         });
       }
-      socket.on("user_joined", (e) => {});
+      socket.on("user_left", (e: string) => {
+        let targetIdx = roomMembers.findIndex((val) => val === e);
+        setRoomMembers(roomMembers.filter((_, idx) => idx != targetIdx));
+      });
+      socket.on("user_joined", (e: string) => {
+        console.log(e);
+        setRoomMembers(roomMembers.concat([e]));
+      });
       socket.on("subtitle", (e) => {
         transcriptContainer.current?.scrollIntoView({ behavior: "smooth" });
         if (sequenceRef.current == 0) {
@@ -221,7 +230,7 @@ export function Transcriber() {
     if (speech == "") {
       return;
     }
-    await socket.emit("hostSpeech", {
+    await socket.emit("speech", {
       speech: speech,
       language: speechToTranslate.get(language),
       seq: sequenceRef.current,
@@ -315,7 +324,10 @@ export function Transcriber() {
           <Select
             onChange={(e) => {
               setSubtitleLanguage(e.target.value);
-              socket.emit("hostChangeLanguage", e.target.value);
+              socket.emit("changeLanguage", {
+                sessionId: sessionId,
+                language: e.target.value,
+              });
             }}
             bgColor="white"
             defaultValue={languageTranslateTag[0].tag}

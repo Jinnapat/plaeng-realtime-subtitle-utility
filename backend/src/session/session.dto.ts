@@ -1,6 +1,7 @@
 export interface Participant{
     socketId: string,
-    language: string
+    language: string,
+    name?: string
 }
 export interface SubRoom{
     language: string,
@@ -13,18 +14,13 @@ export interface Session {
 }
 export interface JoinSessionDto{
     language: string,
-    sessionId : string
+    sessionId : string,
+    name: string
 }
 
 export interface ChangeLanguageDto{
     sessionId: string,
     language: string
-}
-export interface HostSpeechDto{
-    speech: string,
-    language: string,
-    seq: number,
-    isBreak: boolean
 }
 
 export interface SpeechDto{
