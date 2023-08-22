@@ -232,7 +232,7 @@ export function Participant() {
         </ModalContent>
       </Modal>
       <Stack alignItems="center" spacing={5}>
-        <Heading size="lg" color={colorTheme.primary}>
+        <Heading size="lg" color={"white"}>
           Session #{sessionId}
         </Heading>
         <Stack direction="row">
@@ -266,7 +266,7 @@ export function Participant() {
           ></Box>
         </Stack>
         <Box w="30vw">
-          <Text>Speech language</Text>
+          <Text color={"white"}>Speech language</Text>
           <Select
             onChange={(e) => {
               setLanaguage(e.target.value);
@@ -282,7 +282,7 @@ export function Participant() {
               );
             })}
           </Select>
-          <Text>Subtitle language</Text>
+          <Text color={"white"}>Subtitle language</Text>
           <Select
             onChange={(e) => {
               setSubtitleLanguage(e.target.value);
@@ -305,7 +305,7 @@ export function Participant() {
         </Box>
         <Box>
           <Button
-            bgColor={colorTheme.primary}
+            bgColor={"#ffc40c"}
             color="white"
             onClick={toggleListening}
             mr="3"
@@ -313,6 +313,8 @@ export function Participant() {
             {listening ? "Stop speaking" : "Start speaking"}
           </Button>
           <Button
+            backgroundColor={"#9f1e00"}
+            color={"white"}
             onClick={() => {
               socket.disconnect();
               router.push("/");
@@ -321,7 +323,7 @@ export function Participant() {
             leave
           </Button>
         </Box>
-        <Spinner fontSize="xl" hidden={!processing} />
+        <Spinner fontSize="xl" hidden={!processing} color="white" />
       </Stack>
     </>
   );
